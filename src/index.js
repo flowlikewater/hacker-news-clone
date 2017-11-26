@@ -2,11 +2,12 @@ import React from 'react'
 import ReactDOM from 'react-dom'
 import './styles/index.css'
 import { BrowserRouter } from 'react-router-dom'
-import { SubscriptionClient, addGraphQLSubscriptions } from 'subscriptions-transport-ws'
 import App from './components/App'
 import registerServiceWorker from './registerServiceWorker'
 import { GC_AUTH_TOKEN } from './constants'
-import { ApolloLink } from 'apollo-link'
+import { WebSocketLink } from 'apollo-link-ws'
+import { getMainDefinition } from 'apollo-utilities'
+import { ApolloLink, split } from 'apollo-link'
 import { ApolloProvider } from 'react-apollo'
 import { ApolloClient } from 'apollo-client'
 import { createHttpLink } from 'apollo-link-http'
@@ -16,19 +17,40 @@ import { InMemoryCache } from 'apollo-cache-inmemory'
 
 const httpLink = createHttpLink({ uri: 'https://api.graph.cool/simple/v1/cjadpogyz4tzi0149d28ltj1l' })
 
-const middlewareLink = new ApolloLink((operation, forward) => {
+const middlewareAuthLink = new ApolloLink((operation, forward) => {
+  const token = localStorage.getItem(GC_AUTH_TOKEN)
+  const authorizationHeader = token ? `Bearer ${token}` : null 
   operation.setContext({
     headers: {
-      authorization: localStorage.getItem(GC_AUTH_TOKEN) || null
+      authorization: authorizationHeader
     }
   });
   return forward(operation)
 })
 
-const link = middlewareLink.concat(httpLink)
+const httpLinkWithAuthToken = middlewareAuthLink.concat(httpLink)
+
+const wsLink = new WebSocketLink({
+  uri: `wss://subscriptions.graph.cool/v1/cjadpogyz4tzi0149d28ltj1l`,
+  options: {
+    reconnect: true,
+    connectionParams: {
+      authToken: localStorage.getItem(GC_AUTH_TOKEN),
+    }
+  }
+})
+
+const link = split(
+  ({ query }) => {
+    const { kind, operation } = getMainDefinition(query)
+    return kind === 'OperationDefinition' && operation === 'subscription'
+  },
+  wsLink,
+  httpLinkWithAuthToken,
+)
 
 const client = new ApolloClient({
-  link: httpLink,
+  link,
   cache: new InMemoryCache()
 })
 
