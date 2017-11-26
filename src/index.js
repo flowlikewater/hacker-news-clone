@@ -2,30 +2,31 @@ import React from 'react'
 import ReactDOM from 'react-dom'
 import './styles/index.css'
 import { BrowserRouter } from 'react-router-dom'
+import { SubscriptionClient, addGraphQLSubscriptions } from 'subscriptions-transport-ws'
 import App from './components/App'
 import registerServiceWorker from './registerServiceWorker'
 import { GC_AUTH_TOKEN } from './constants'
-// 1
+import { ApolloLink } from 'apollo-link'
 import { ApolloProvider } from 'react-apollo'
 import { ApolloClient } from 'apollo-client'
-import { HttpLink } from 'apollo-link-http'
+import { createHttpLink } from 'apollo-link-http'
 import { InMemoryCache } from 'apollo-cache-inmemory'
 
-// 2
-const httpLink = new HttpLink({ uri: 'https://api.graph.cool/simple/v1/cjadpogyz4tzi0149d28ltj1l' })
+// apollo upgrade - https://github.com/apollographql/apollo-client/blob/master/Upgrade.md
 
-// networkInterface.use([{
-//   applyMiddleware(req, next) {
-//     if (!req.options.headers) {
-//       req.options.headers = {}
-//     }
-//     const token = localStorage.getItem(GC_AUTH_TOKEN)
-//     req.options.headers.authorization = token ? `Bearer ${token}` : null
-//     next()
-//   }
-// }])
+const httpLink = createHttpLink({ uri: 'https://api.graph.cool/simple/v1/cjadpogyz4tzi0149d28ltj1l' })
 
-// 3
+const middlewareLink = new ApolloLink((operation, forward) => {
+  operation.setContext({
+    headers: {
+      authorization: localStorage.getItem(GC_AUTH_TOKEN) || null
+    }
+  });
+  return forward(operation)
+})
+
+const link = middlewareLink.concat(httpLink)
+
 const client = new ApolloClient({
   link: httpLink,
   cache: new InMemoryCache()
