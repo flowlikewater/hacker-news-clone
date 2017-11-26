@@ -40,6 +40,10 @@ const wsLink = new WebSocketLink({
   }
 })
 
+// split is used to “route” a request to a specific middleware link
+// It takes three arguments, the first one is a test function returning a boolean, the remaining two are again of type ApolloLink.
+// If that boolean is true, the request will be forwarded to the link passed as the second argument. 
+// If false, to the third one.
 const link = split(
   ({ query }) => {
     const { kind, operation } = getMainDefinition(query)
