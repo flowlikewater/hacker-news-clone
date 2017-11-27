@@ -7,7 +7,7 @@ import registerServiceWorker from './registerServiceWorker'
 import { GC_AUTH_TOKEN } from './constants'
 import { WebSocketLink } from 'apollo-link-ws'
 import { getMainDefinition } from 'apollo-utilities'
-import { ApolloLink, split } from 'apollo-link'
+import { ApolloLink, split } from 'apollo-client-preset'
 import { ApolloProvider } from 'react-apollo'
 import { ApolloClient } from 'apollo-client'
 import { createHttpLink } from 'apollo-link-http'
@@ -34,6 +34,7 @@ const wsLink = new WebSocketLink({
   uri: `wss://subscriptions.graph.cool/v1/cjadpogyz4tzi0149d28ltj1l`,
   options: {
     reconnect: true,
+    timeout: 20000,
     connectionParams: {
       authToken: localStorage.getItem(GC_AUTH_TOKEN),
     }
